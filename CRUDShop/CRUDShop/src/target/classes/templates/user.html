@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - CRUD Shop</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* --- CURSORES CARTOON PERSONALIZADOS --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #001a33;
+            color: white;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="%23ff9933" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 3 21 11 13 13 11 21 3 3"></polygon></svg>'), auto;
+        }
+
+        a, button, .clickable {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="%23ff9933" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8V6a2 2 0 0 0-4 0v8"></path><path d="M10 14H6a2 2 0 0 0-2 2v2a6 6 0 0 0 6 6h4a6 6 0 0 0 6-6v-5a2 2 0 0 0-2-2h-2"></path><path d="M18 13v-2a2 2 0 0 0-4 0v2"></path><path d="M14 11V9a2 2 0 0 0-4 0v2"></path></svg>') 10 0, pointer;
+        }
+
+        /* --- PANTALLA DE CARGA --- */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #002147;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000;
+            transition: opacity 1s ease-out, visibility 1s ease-out;
+        }
+
+        #loading-screen.fade-out { opacity: 0; visibility: hidden; }
+
+        .welcome-logo {
+            width: 300px; height: auto; margin-bottom: 40px; opacity: 0;
+            transform: translateY(-20px);
+            animation: fadeInDown 1s forwards 0.2s;
+        }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        #main-content {
+            width: 100%; height: 100%; display: none; opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1s ease-in, transform 1s ease-in;
+            padding: 40px;
+        }
+
+        #main-content.visible {
+            display: block; opacity: 1; transform: translateY(0); overflow-y: auto;
+        }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 50px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 20px;
+        }
+
+        .header-logo { width: 160px; height: auto; }
+
+        .btn-header {
+            color: white; text-decoration: none; font-weight: bold;
+            background-color: rgba(255,255,255,0.1); padding: 10px 20px;
+            border-radius: 5px; transition: background 0.3s;
+        }
+        .btn-header:hover { background-color: rgba(255,255,255,0.2); color: #ff9933; }
+
+        .dashboard-title {
+            text-align: center; font-size: 2.5rem; margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* --- TABLA CRUD USUARIOS --- */
+        .table-container {
+            max-width: 1100px; margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px; padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        table { width: 100%; border-collapse: collapse; color: white; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { font-weight: bold; color: #ff9933; font-size: 1.1rem; }
+        tr:hover { background-color: rgba(255,255,255,0.05); }
+
+        .btn-action {
+            padding: 8px 15px; border-radius: 5px; text-decoration: none;
+            color: white; font-weight: bold; font-size: 0.9rem; margin-right: 5px;
+            display: inline-block; margin-bottom: 5px;
+        }
+        .btn-edit { background-color: #28a745; }
+        .btn-delete { background-color: #dc3545; }
+        .btn-create { background-color: #007bff; font-size: 1rem; padding: 10px 20px; margin-bottom: 20px; }
+
+        /* --- WIDGET FLOTANTE (CURSOR + RAM) --- */
+        #system-widget {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            background: rgba(0, 33, 71, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            color: #b3d4ff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+
+        #system-widget:hover {
+            border-color: #ff9933;
+            background: rgba(0, 33, 71, 0.8);
+            transform: translateY(-5px);
+            color: white;
+        }
+
+        .widget-row { display: flex; align-items: center; gap: 10px; }
+        .widget-icon { font-size: 1.2rem; }
+        .highlight { color: #ff9933; font-weight: bold; }
+
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <img th:src="@{/logito.png}" src="/logito.png" alt="Logo" class="welcome-logo">
+</div>
+
+<div id="main-content">
+    <header>
+        <a href="/home" class="clickable"><img th:src="@{/logito.png}" src="/logito.png" alt="Logo" class="header-logo"></a>
+        <div>
+            <a href="/home" class="btn-header">Volver al Home</a>
+            <a href="/logout" class="btn-header">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <h1 class="dashboard-title">Gestión de Usuarios</h1>
+
+    <div class="table-container">
+
+        <div style="text-align: right;">
+            <a th:href="@{/users/new}" class="btn-action btn-create clickable">+ Nuevo Usuario</a>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Edad</th>
+                <th>Email</th>
+                <th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.userId}">1</td>
+                <td th:text="${user.firstName}">Juan</td>
+                <td th:text="${user.lastName}">Perez</td>
+                <td th:text="${user.age}">25</td>
+                <td th:text="${user.email}">juan.perez@mail.com</td>
+                <td>
+                    <a th:href="@{/users/edit/{id}(id=${user.userId})}" class="btn-action btn-edit clickable">Editar</a>
+                    <a th:href="@{/users/delete/{id}(id=${user.userId})}" class="btn-action btn-delete clickable">Eliminar</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="system-widget">
+    <div class="widget-row">
+        <span class="widget-icon">🎯</span>
+        <span>Posición: <span id="cursor-x" class="highlight">0</span>x, <span id="cursor-y" class="highlight">0</span>y</span>
+    </div>
+    <div class="widget-row">
+        <span class="widget-icon">⚡</span>
+        <span>Client RAM: <span id="ram-usage" class="highlight">Calculando...</span></span>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('load', () => {
+        const loaderScreen = document.getElementById('loading-screen');
+        const mainContent = document.getElementById('main-content');
+        const body = document.body;
+        const minimumDisplayTime = 1500;
+        const startTime = Date.now();
+
+        function activateTransition() {
+            const elapsed = Date.now() - startTime;
+            const remaining = minimumDisplayTime - elapsed;
+            setTimeout(() => {
+                loaderScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    mainContent.style.display = 'block';
+                    setTimeout(() => {
+                        mainContent.classList.add('visible');
+                        body.style.overflow = 'auto';
+                    }, 50);
+                }, 1000);
+            }, Math.max(0, remaining));
+        }
+        activateTransition();
+
+        const cursorX = document.getElementById('cursor-x');
+        const cursorY = document.getElementById('cursor-y');
+
+        document.addEventListener('mousemove', (e) => {
+            cursorX.textContent = e.clientX;
+            cursorY.textContent = e.clientY;
+        });
+
+        const ramUsage = document.getElementById('ram-usage');
+
+        setInterval(() => {
+            if (performance && performance.memory) {
+                const usedJSHeap = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+                ramUsage.textContent = `${usedJSHeap} MB`;
+            } else {
+                ramUsage.textContent = "No disp.";
+            }
+        }, 1000);
+    });
+</script>
+</body>
+</html>

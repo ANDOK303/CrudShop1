@@ -13,6 +13,6 @@ public class CrudShopApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("Api funcionando correctamente....");
+        System.out.println("Api run correctly");
     }
 }
